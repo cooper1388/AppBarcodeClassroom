@@ -17,7 +17,7 @@ appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "a
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
-barcode = { group = "com.google.mlkit.vision", name = "barcode-scanning", version.ref = "barcode" }
+barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "barcode" }
 
 
 [plugins]
