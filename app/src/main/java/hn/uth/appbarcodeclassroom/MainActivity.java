@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.view.View;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.Nullable;
@@ -28,6 +29,7 @@ import com.google.mlkit.vision.common.InputImage;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 
 import hn.uth.appbarcodeclassroom.databinding.ActivityMainBinding;
 
@@ -36,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PERMISSIONS = 888;
     private ActivityMainBinding binding;
     private static final int REQUEST_IMAGE_CAPTURE = 999;
+    private static final int REQUEST_PICK_IMAGE = 777;
     private String imageFolder="";
     private Bitmap image;
 
@@ -78,6 +81,44 @@ public class MainActivity extends AppCompatActivity {
                 Snackbar.make(v, R.string.permission_required, Snackbar.LENGTH_SHORT).show();
             }
         });
+        binding.btnGallery.setOnClickListener(v -> {
+            abrirGaleria(v);
+        });
+    }
+
+    private void limpiarPantalla(){
+        binding.etBarcodeFormat.setText("");
+        binding.etBarcodeRawValue.setText("");
+        binding.etBarcodeStatus.setText("");
+        binding.etBarcodeValueType.setText("");
+        binding.etBarcodeContact.setText("");
+        binding.etBarcodeDisplayValue.setText("");
+        binding.etBarcodeEmail.setText("");
+        binding.etBarcodeEvent.setText("");
+        binding.etBarcodeGeo.setText("");
+        binding.etBarcodePhone.setText("");
+        binding.etBarcodeSms.setText("");
+        binding.etBarcodeText.setText("");
+        binding.etBarcodeUrl.setText("");
+        binding.etBarcodeWifi.setText("");
+
+    }
+
+    private void abrirGaleria(View v) {
+        if (checkAndRequestPermission()) {
+            Intent gallery = new Intent(Intent.ACTION_GET_CONTENT);
+            gallery.setType("image/*");
+
+            Intent selectorIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            selectorIntent.setType("image/*");
+
+            Intent menu = Intent.createChooser(gallery, "Seleccione una imagen");
+            menu.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{selectorIntent});
+
+            startActivityForResult(gallery, REQUEST_PICK_IMAGE);
+        }else{
+            Snackbar.make(v, R.string.permission_required, Snackbar.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -93,10 +134,28 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+        if(requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK) {
+
+            if (data != null && data.getData() != null) {
+                Uri selectedImageUri = data.getData();
+                binding.imgPreview.setImageURI(selectedImageUri);
+                try {
+                    image = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
+                    procesarImagen();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Snackbar.make(binding.getRoot(), R.string.error_processing_image, Snackbar.LENGTH_SHORT).show();
+                }
+            }else{
+                Snackbar.make(binding.getRoot(), R.string.error_processing_image, Snackbar.LENGTH_SHORT).show();
+            }
+        }
         super.onActivityResult(requestCode, resultCode, data);
     }
 
     private void procesarImagen() {
+        limpiarPantalla();
+
         BarcodeScannerOptions options = new BarcodeScannerOptions.Builder()
                         .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
                         .build();
@@ -111,9 +170,54 @@ public class MainActivity extends AppCompatActivity {
                         String rawValue = barcode.getRawValue();
 
 
-                        binding.etBarcodeFormat.setText(getString(barcode.getValueType() == 8 ? R.string.qr_code : R.string.unknown));
+                        binding.etBarcodeFormat.setText(getString(barcode.getFormat() == Barcode.FORMAT_QR_CODE ? R.string.qr_code : R.string.unknown));
                         binding.etBarcodeRawValue.setText(rawValue);
                         binding.etBarcodeStatus.setText(getString(R.string.barcode_found));
+
+                        int valueType = barcode.getValueType();
+                        // See API reference for complete list of supported types
+                        switch (valueType) {
+                            case Barcode.TYPE_WIFI:
+                                binding.etBarcodeValueType.setText(getString(R.string.qr_code_wifi));
+                                String ssid = Objects.requireNonNull(barcode.getWifi()).getSsid();
+                                String password = barcode.getWifi().getPassword();
+                                int type = barcode.getWifi().getEncryptionType();
+                                binding.etBarcodeWifi.setText(ssid+", "+password+", "+type);
+                                break;
+                            case Barcode.TYPE_URL:
+                                binding.etBarcodeValueType.setText(getString(R.string.qr_code_URL));
+                                String title = Objects.requireNonNull(barcode.getUrl()).getTitle();
+                                String url = barcode.getUrl().getUrl();
+                                binding.etBarcodeUrl.setText(title+", "+url);
+                                break;
+                            case Barcode.TYPE_CONTACT_INFO:
+                                binding.etBarcodeValueType.setText(getString(R.string.qr_code_contact));
+                                String name = Objects.requireNonNull(Objects.requireNonNull(barcode.getContactInfo()).getName()).getFormattedName();
+                                String phone = barcode.getContactInfo().getPhones().get(0).getNumber();
+                                String email = barcode.getContactInfo().getEmails().get(0).getAddress();
+                                binding.etBarcodeContact.setText(name);
+                                binding.etBarcodeEmail.setText(email);
+                                binding.etBarcodePhone.setText(phone);
+                                break;
+                            case Barcode.TYPE_SMS:
+                                String sms = Objects.requireNonNull(Objects.requireNonNull(barcode.getSms()).getMessage());
+                                binding.etBarcodeSms.setText(sms);
+                                binding.etBarcodeValueType.setText(getString(R.string.qr_code_sms));
+                                break;
+                            case Barcode.TYPE_EMAIL:
+                                String emailSubject = Objects.requireNonNull(Objects.requireNonNull(barcode.getEmail()).getSubject());
+                                String emailAddress = Objects.requireNonNull(Objects.requireNonNull(barcode.getEmail()).getAddress());
+                                binding.etBarcodeEmail.setText(emailAddress+","+emailSubject);
+                                binding.etBarcodeValueType.setText(getString(R.string.qr_code_email));
+                                break;
+                            case Barcode.TYPE_GEO:
+                                String geoLatitude = String.valueOf(Objects.requireNonNull(barcode.getGeoPoint()).getLat());
+                                String geoLongitude = String.valueOf(Objects.requireNonNull(barcode.getGeoPoint()).getLng());
+                                binding.etBarcodeGeo.setText(geoLatitude + ", " + geoLongitude);
+                                binding.etBarcodeValueType.setText(getString(R.string.qr_code_geo));
+                                break;
+                        }
+
                     } else {
                         binding.etBarcodeStatus.setText(getString(R.string.no_barcode_found));
                     }

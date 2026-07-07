@@ -39,4 +39,12 @@
     <string name="qr_code">Código QR</string>
     <string name="unknown">Desconocido</string>
     <string name="procesamiento_finalizado">Se procesó la foto correctamente</string>
+    <string name="qr_code_value">QR\n</string>
+    <string name="unknown_value">Desconocido</string>
+    <string name="qr_code_wifi">WIFI</string>
+    <string name="qr_code_URL">URL</string>
+    <string name="qr_code_contact">Contact Info</string>
+    <string name="qr_code_email">EMAIL</string>
+    <string name="qr_code_sms">SMS</string>
+    <string name="qr_code_geo">Geospartial</string>
 </resources>
